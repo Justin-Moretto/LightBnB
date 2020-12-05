@@ -66,8 +66,24 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
-}
+  const query = {
+    text: `SELECT reservations.*, properties.*, AVG(rating) AS average_rating
+    FROM property_reviews
+    JOIN reservations ON reservations.id = property_reviews.reservation_id
+    JOIN properties ON properties.id = reservations.property_id
+    WHERE reservations.guest_id = $1
+    AND reservations.end_date <> now()::date
+    GROUP BY reservations.id, properties.id
+    ORDER BY reservations.start_date
+    LIMIT $2;`,
+    values: [guest_id, limit]
+  };
+
+  return pool
+    .query(query)
+    .then(result => result.rows)
+    .catch(err => console.error('query error', err.stack));
+};
 exports.getAllReservations = getAllReservations;
 
 /// Properties
